@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'practice_screen.dart';
+import 'report_screen.dart';
 
 void main() {
   runApp(const WimHofApp());
@@ -30,8 +32,8 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const PracticeScreen(),
-    const ReportScreen(),
+    PracticeScreen(),
+    ReportScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -57,39 +59,6 @@ class _MainScreenState extends State<MainScreen> {
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-      ),
-    );
-  }
-}
-
-class PracticeScreen extends StatelessWidget {
-  const PracticeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Practice')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            // TODO: позже добавим логику дыхательной практики
-          },
-          child: const Text('Start Practice'),
-        ),
-      ),
-    );
-  }
-}
-
-class ReportScreen extends StatelessWidget {
-  const ReportScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Report')),
-      body: const Center(
-        child: Text('Reports will be here'),
       ),
     );
   }
