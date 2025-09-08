@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 enum PracticePhase { start, breathing, holdFree, holdFixed }
 
+enum BreathState { inhale, exhale }
+
 class PracticeScreen extends StatefulWidget {
   @override
   _PracticeScreenState createState() => _PracticeScreenState();
@@ -14,22 +16,30 @@ class _PracticeScreenState extends State<PracticeScreen> {
   int _secondsCounted = 0;
   Timer? _timer;
   int _freeHoldTime = 0;
+  BreathState _breathState = BreathState.inhale;
 
   void _startPractice() {
     setState(() {
       _currentPhase = PracticePhase.breathing;
       _breathCounter = 0;
       _secondsCounted = 0;
+      _breathState = BreathState.inhale;
     });
     _startBreathing();
   }
 
   void _startBreathing() {
     _timer?.cancel();
-    _timer = Timer.periodic(Duration(seconds: 4), (timer) {
+    _timer = Timer.periodic(Duration(seconds: 2), (timer) {
       setState(() {
-        _breathCounter++;
-        if (_breathCounter >= 30) {
+        if (_breathState == BreathState.inhale) {
+          _breathState = BreathState.exhale;
+        } else {
+          _breathState = BreathState.inhale;
+          _breathCounter++;
+        }
+
+        if (_breathCounter > 30) {
           timer.cancel();
           _currentPhase = PracticePhase.holdFree;
           _secondsCounted = 0;
@@ -92,6 +102,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
           children: [
             Text("Breathing phase",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            SizedBox(height: 20),
+            Text(
+              _breathState == BreathState.inhale ? "Inhale" : "Exhale",
+              style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 20),
             Text("Breath count: $_breathCounter",
                 style: TextStyle(fontSize: 40)),
