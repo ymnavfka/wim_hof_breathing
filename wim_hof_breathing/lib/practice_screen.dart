@@ -17,6 +17,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   Timer? _timer;
   int _freeHoldTime = 0;
   BreathState _breathState = BreathState.inhale;
+  double _breathProgress = 0.0;
 
   void _startPractice() {
     setState(() {
@@ -24,6 +25,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       _breathCounter = 0;
       _secondsCounted = 0;
       _breathState = BreathState.inhale;
+      _breathProgress = 1.0;
     });
     _startBreathing();
   }
@@ -34,15 +36,18 @@ class _PracticeScreenState extends State<PracticeScreen> {
       setState(() {
         if (_breathState == BreathState.inhale) {
           _breathState = BreathState.exhale;
+          _breathProgress = 0.0;
         } else {
           _breathState = BreathState.inhale;
           _breathCounter++;
+          _breathProgress = 1.0;
         }
 
         if (_breathCounter > 30) {
           timer.cancel();
           _currentPhase = PracticePhase.holdFree;
           _secondsCounted = 0;
+          _breathProgress = 0.0;
           _startFreeHold();
         }
       });
@@ -110,6 +115,34 @@ class _PracticeScreenState extends State<PracticeScreen> {
             SizedBox(height: 20),
             Text("Breath count: $_breathCounter",
                 style: TextStyle(fontSize: 40)),
+            SizedBox(height: 30),
+            // Простая шкала: плавно анимируется при смене _breathProgress
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40.0),
+              child: Container(
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: _breathProgress),
+                  duration: Duration(milliseconds: 2000),
+                  builder: (context, value, child) {
+                    return FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: value.clamp(0.0, 1.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           ],
         );
 
