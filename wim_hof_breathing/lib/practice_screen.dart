@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-enum PracticePhase { start, breathing, holdFree, holdFixed }
+enum PracticePhase { start, breathing, holdFree, preHoldInhale, holdFixed, postHoldExhale }
 
 enum BreathState { inhale, exhale }
 
@@ -18,6 +18,36 @@ class _PracticeScreenState extends State<PracticeScreen> {
   int _freeHoldTime = 0;
   BreathState _breathState = BreathState.inhale;
   double _breathProgress = 0.0;
+
+  // Вынесённый виджет прогресс-бара (может анимировать от begin до end)
+  Widget _progressBar(double begin, double end) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40.0),
+      child: Container(
+        height: 20,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: begin, end: end),
+          duration: Duration(milliseconds: 2000),
+          builder: (context, value, child) {
+            return FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: value.clamp(0.0, 1.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
   void _startPractice() {
     setState(() {
@@ -65,11 +95,26 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
   void _finishFreeHold() {
     _freeHoldTime = _secondsCounted;
+    // переходим в короткую preHold (2s inhale), а затем в fixed hold
+    _startPreHold();
+  }
+
+  void _startPreHold() {
+    _timer?.cancel();
     setState(() {
-      _currentPhase = PracticePhase.holdFixed;
+      _currentPhase = PracticePhase.preHoldInhale;
       _secondsCounted = 0;
+      _breathState = BreathState.inhale;
+      _breathProgress = 1.0;
     });
-    _startFixedHold();
+    _timer = Timer(Duration(seconds: 2), () {
+      setState(() {
+        _currentPhase = PracticePhase.holdFixed;
+        _secondsCounted = 0;
+        _breathProgress = 0.0;
+      });
+      _startFixedHold();
+    });
   }
 
   void _startFixedHold() {
@@ -79,10 +124,27 @@ class _PracticeScreenState extends State<PracticeScreen> {
         _secondsCounted++;
         if (_secondsCounted >= 15) {
           timer.cancel();
-          _currentPhase = PracticePhase.start;
-          _secondsCounted = 0;
-          _breathCounter = 0;
+          // после фиксированного холда — сделать 2s выдох, затем сброс
+          _startPostHoldExhale();
         }
+      });
+    });
+  }
+
+  void _startPostHoldExhale() {
+    _timer?.cancel();
+    setState(() {
+      _currentPhase = PracticePhase.postHoldExhale;
+      _breathState = BreathState.exhale;
+      _breathProgress = 0.0; // для логики — прогресс будет анимироваться от 1->0 в виджете
+    });
+    // показать анимацию выдоха 2s (анимация в виджете от 1.0 до 0.0)
+    _timer = Timer(Duration(seconds: 2), () {
+      setState(() {
+        _currentPhase = PracticePhase.start;
+        _secondsCounted = 0;
+        _breathCounter = 0;
+        _breathProgress = 0.0;
       });
     });
   }
@@ -116,33 +178,21 @@ class _PracticeScreenState extends State<PracticeScreen> {
             Text("Breath count: $_breathCounter",
                 style: TextStyle(fontSize: 40)),
             SizedBox(height: 30),
-            // Простая шкала: плавно анимируется при смене _breathProgress
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: Container(
-                height: 20,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0, end: _breathProgress),
-                  duration: Duration(milliseconds: 2000),
-                  builder: (context, value, child) {
-                    return FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: value.clamp(0.0, 1.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
+            // Используем общий прогресс-бар
+            _progressBar(0.0, _breathProgress),
+          ],
+        );
+
+      case PracticePhase.preHoldInhale:
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("Preparing to hold",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            SizedBox(height: 20),
+            Text("Inhale", style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+            SizedBox(height: 30),
+            _progressBar(0.0, 1.0),
           ],
         );
 
@@ -173,6 +223,17 @@ class _PracticeScreenState extends State<PracticeScreen> {
             SizedBox(height: 20),
             Text("Your free hold: $_freeHoldTime s",
                 style: TextStyle(fontSize: 20, color: Colors.grey)),
+          ],
+        );
+
+      case PracticePhase.postHoldExhale:
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("Exhale", style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+            SizedBox(height: 30),
+            // Animate from full to empty
+            _progressBar(1.0, 0.0),
           ],
         );
     }
