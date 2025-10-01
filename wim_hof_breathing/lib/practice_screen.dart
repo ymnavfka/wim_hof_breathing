@@ -1,7 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 
-enum PracticePhase { start, breathing, holdFree, preHoldInhale, holdFixed, postHoldExhale }
+enum PracticePhase {
+  start,
+  breathing,
+  holdFree,
+  preHoldInhale,
+  holdFixed,
+  postHoldExhale,
+}
 
 enum BreathState { inhale, exhale }
 
@@ -18,8 +26,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
   int _freeHoldTime = 0;
   BreathState _breathState = BreathState.inhale;
   double _breathProgress = 0.0;
+  final AudioPlayer _bgPlayer = AudioPlayer();
+  final AudioPlayer _fxPlayer = AudioPlayer();
 
-  // Вынесённый виджет прогресс-бара (может анимировать от begin до end)
   Widget _progressBar(double begin, double end) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40.0),
@@ -57,6 +66,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
       _breathState = BreathState.inhale;
       _breathProgress = 1.0;
     });
+
+    _bgPlayer.setReleaseMode(ReleaseMode.loop);
+    _bgPlayer.setVolume(0.2);
+    _bgPlayer.play(AssetSource('sounds/bg_music.mp3'));
+
+    _fxPlayer.setVolume(1.0);
+    _fxPlayer.play(AssetSource('sounds/inhale.mp3'));
+
     _startBreathing();
   }
 
@@ -67,13 +84,18 @@ class _PracticeScreenState extends State<PracticeScreen> {
         if (_breathState == BreathState.inhale) {
           _breathState = BreathState.exhale;
           _breathProgress = 0.0;
+          _fxPlayer.setVolume(1.0);
+          _fxPlayer.play(AssetSource('sounds/exhale.mp3'));
         } else {
           _breathState = BreathState.inhale;
           _breathCounter++;
           _breathProgress = 1.0;
+          _fxPlayer.setVolume(1.0);
+          _fxPlayer.play(AssetSource('sounds/inhale.mp3'));
         }
 
         if (_breathCounter > 30) {
+          _fxPlayer.stop();
           timer.cancel();
           _currentPhase = PracticePhase.holdFree;
           _secondsCounted = 0;
@@ -95,7 +117,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
   void _finishFreeHold() {
     _freeHoldTime = _secondsCounted;
-    // переходим в короткую preHold (2s inhale), а затем в fixed hold
     _startPreHold();
   }
 
@@ -106,6 +127,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
       _secondsCounted = 0;
       _breathState = BreathState.inhale;
       _breathProgress = 1.0;
+      _fxPlayer.setVolume(1.0);
+      _fxPlayer.play(AssetSource('sounds/inhale.mp3'));
     });
     _timer = Timer(Duration(seconds: 2), () {
       setState(() {
@@ -124,7 +147,6 @@ class _PracticeScreenState extends State<PracticeScreen> {
         _secondsCounted++;
         if (_secondsCounted >= 15) {
           timer.cancel();
-          // после фиксированного холда — сделать 2s выдох, затем сброс
           _startPostHoldExhale();
         }
       });
@@ -136,15 +158,17 @@ class _PracticeScreenState extends State<PracticeScreen> {
     setState(() {
       _currentPhase = PracticePhase.postHoldExhale;
       _breathState = BreathState.exhale;
-      _breathProgress = 0.0; // для логики — прогресс будет анимироваться от 1->0 в виджете
+      _breathProgress = 0.0;
+      _fxPlayer.setVolume(1.0);
+      _fxPlayer.play(AssetSource('sounds/exhale.mp3'));
     });
-    // показать анимацию выдоха 2s (анимация в виджете от 1.0 до 0.0)
     _timer = Timer(Duration(seconds: 2), () {
       setState(() {
         _currentPhase = PracticePhase.start;
         _secondsCounted = 0;
         _breathCounter = 0;
         _breathProgress = 0.0;
+        _bgPlayer.stop();
       });
     });
   }
@@ -152,6 +176,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _bgPlayer.dispose();
+    _fxPlayer.dispose();
     super.dispose();
   }
 
@@ -167,18 +193,21 @@ class _PracticeScreenState extends State<PracticeScreen> {
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Breathing phase",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              "Breathing phase",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 20),
             Text(
               _breathState == BreathState.inhale ? "Inhale" : "Exhale",
               style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 20),
-            Text("Breath count: $_breathCounter",
-                style: TextStyle(fontSize: 40)),
+            Text(
+              "Breath count: $_breathCounter",
+              style: TextStyle(fontSize: 40),
+            ),
             SizedBox(height: 30),
-            // Используем общий прогресс-бар
             _progressBar(0.0, _breathProgress),
           ],
         );
@@ -187,10 +216,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Preparing to hold",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              "Preparing to hold",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 20),
-            Text("Inhale", style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+            Text(
+              "Inhale",
+              style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 30),
             _progressBar(0.0, 1.0),
           ],
@@ -202,11 +236,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Free hold (tap to stop)",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(
+                "Free hold (tap to stop)",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
               SizedBox(height: 20),
-              Text("Time: $_secondsCounted s",
-                  style: TextStyle(fontSize: 40)),
+              Text("Time: $_secondsCounted s", style: TextStyle(fontSize: 40)),
             ],
           ),
         );
@@ -215,14 +250,17 @@ class _PracticeScreenState extends State<PracticeScreen> {
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Fixed hold (15s)",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              "Fixed hold (15s)",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 20),
-            Text("Time: $_secondsCounted / 15",
-                style: TextStyle(fontSize: 40)),
+            Text("Time: $_secondsCounted / 15", style: TextStyle(fontSize: 40)),
             SizedBox(height: 20),
-            Text("Your free hold: $_freeHoldTime s",
-                style: TextStyle(fontSize: 20, color: Colors.grey)),
+            Text(
+              "Your free hold: $_freeHoldTime s",
+              style: TextStyle(fontSize: 20, color: Colors.grey),
+            ),
           ],
         );
 
@@ -230,9 +268,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Exhale", style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+            Text(
+              "Exhale",
+              style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 30),
-            // Animate from full to empty
             _progressBar(1.0, 0.0),
           ],
         );
@@ -243,7 +283,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Practice")),
-      body: Center(child: _buildContent())
+      body: Center(child: _buildContent()),
     );
   }
 }
