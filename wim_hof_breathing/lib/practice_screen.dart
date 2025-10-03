@@ -184,9 +184,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
   Widget _buildContent() {
     switch (_currentPhase) {
       case PracticePhase.start:
-        return ElevatedButton(
-          onPressed: _startPractice,
-          child: Text("Start Practice"),
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _startPractice,
+          child: SizedBox.expand(
+            child: Center(
+              child: Text("Tap anywhere to start",
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            ),
+          ),
         );
 
       case PracticePhase.breathing:
@@ -232,17 +238,22 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
       case PracticePhase.holdFree:
         return GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: _finishFreeHold,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                "Free hold (tap to stop)",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          child: SizedBox.expand(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Free hold (tap anywhere to stop)",
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 20),
+                  Text("Time: $_secondsCounted s", style: TextStyle(fontSize: 40)),
+                ],
               ),
-              SizedBox(height: 20),
-              Text("Time: $_secondsCounted s", style: TextStyle(fontSize: 40)),
-            ],
+            ),
           ),
         );
 
