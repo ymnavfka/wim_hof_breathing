@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
 
 enum PracticePhase {
   start,
@@ -20,6 +21,7 @@ class PracticeScreen extends StatefulWidget {
 
 class _PracticeScreenState extends State<PracticeScreen> {
   PracticePhase _currentPhase = PracticePhase.start;
+  final FocusNode _keyboardFocusNode = FocusNode();
   int _breathCounter = 0;
   int _secondsCounted = 0;
   Timer? _timer;
@@ -178,19 +180,32 @@ class _PracticeScreenState extends State<PracticeScreen> {
     _timer?.cancel();
     _bgPlayer.dispose();
     _fxPlayer.dispose();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
   Widget _buildContent() {
     switch (_currentPhase) {
       case PracticePhase.start:
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _startPractice,
-          child: SizedBox.expand(
-            child: Center(
-              child: Text("Tap anywhere to start",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        return RawKeyboardListener(
+          focusNode: _keyboardFocusNode,
+          autofocus: true,
+          onKey: (RawKeyEvent event) {
+            if (event is RawKeyDownEvent) {
+              final key = event.logicalKey;
+              if (key == LogicalKeyboardKey.space || key == LogicalKeyboardKey.enter) {
+                _startPractice();
+              }
+            }
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _startPractice,
+            child: SizedBox.expand(
+              child: Center(
+                child: Text("Tap anywhere to start",
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              ),
             ),
           ),
         );
@@ -237,21 +252,33 @@ class _PracticeScreenState extends State<PracticeScreen> {
         );
 
       case PracticePhase.holdFree:
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _finishFreeHold,
-          child: SizedBox.expand(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Free hold (tap anywhere to stop)",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 20),
-                  Text("Time: $_secondsCounted s", style: TextStyle(fontSize: 40)),
-                ],
+        return RawKeyboardListener(
+          focusNode: _keyboardFocusNode,
+          autofocus: true,
+          onKey: (RawKeyEvent event) {
+            if (event is RawKeyDownEvent) {
+              final key = event.logicalKey;
+              if (key == LogicalKeyboardKey.space || key == LogicalKeyboardKey.enter) {
+                _finishFreeHold();
+              }
+            }
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _finishFreeHold,
+            child: SizedBox.expand(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Free hold (tap anywhere to stop)",
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 20),
+                    Text("Time: $_secondsCounted s", style: TextStyle(fontSize: 40)),
+                  ],
+                ),
               ),
             ),
           ),
