@@ -11,6 +11,7 @@ class WimHofApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Wim Hof Breathing',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: const MainScreen(),
